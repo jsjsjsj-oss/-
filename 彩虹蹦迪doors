@@ -1,0 +1,83 @@
+--[[Doors 彩虹透视（过滤破损门+木板封门）]]
+local Workspace = game:GetService("Workspace")
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+
+local player = Players.LocalPlayer
+local tracked = {}
+local rainbow = {
+    Color3.new(1,0,0), Color3.new(1,0.5,0), Color3.new(1,1,0),
+    Color3.new(0,1,0), Color3.new(0,0,1), Color3.new(0.3,0,0.5),
+    Color3.new(0.6,0,1)
+}
+local colorIdx = 1
+
+-- 检测门是否被木板封条或破损
+local function isDoorInvalid(door)
+    -- 木板封条检测
+    for _, child in ipairs(door:GetDescendants()) do
+        if child:IsA("BasePart") and (child.Name:find("Board") or child.Name:find("木板") or child.Name:find("封条")) then
+            return true
+        end
+    end
+    -- 破损门检测（名称含"Broken"或外观破损特征）
+    return door.Name:find("Broken") ~= nil
+end
+
+-- 获取物品显示部件
+local function getDisplayPart(obj)
+    return obj:IsA("BasePart") and obj or obj:FindFirstChildWhichIsA("BasePart")
+end
+
+-- 应用彩虹透视效果
+local function applyRainbow(part, color)
+    part.Material = Enum.Material.Neon
+    part.Transparency = 0.15
+    part.Color = color
+end
+
+-- 主循环
+RunService.RenderStepped:Connect(function()
+    -- 切换彩虹色
+    colorIdx = colorIdx % #rainbow + 1
+    local currentColor = rainbow[colorIdx]
+
+    -- 扫描所有物品
+    for _, obj in ipairs(Workspace:GetDescendants()) do
+        local part = getDisplayPart(obj)
+        if part then
+            -- 过滤破损门和木板封门
+            if obj.Name:find("Door") and not isDoorInvalid(obj) then
+                if not tracked[obj] then
+                    applyRainbow(part, currentColor)
+                    tracked[obj] = true
+                else
+                    part.Color = currentColor
+                end
+            -- 其他可透视物品（躲藏点、宝箱、道具等）
+            elseif not obj.Name:find("Door") then
+                local name = obj.Name:lower()
+                if name:find("hide") or name:find("closet") or name:find("chest")
+                or name:find("key") or name:find("crucifix") or name:find("vitamins")
+                or name:find("lockpick") or name:find("coin") or name:find("drawer")
+                or name:find("nightvision") or name:find("cabinet") or name:find("locker") then
+                    
+                    if not tracked[obj] then
+                        applyRainbow(part, currentColor)
+                        tracked[obj] = true
+                    else
+                        part.Color = currentColor
+                    end
+                end
+            end
+        end
+    end
+end)
+
+-- 重生重置
+player.CharacterAdded:Connect(function()
+    task.wait(0.1)
+    tracked = {}
+end)
+
+print("彩虹透视已激活（破损门+木板封门均不透视）")
